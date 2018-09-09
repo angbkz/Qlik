@@ -1,0 +1,59 @@
+﻿///$tab Main
+SET ThousandSep=',';
+SET DecimalSep='.';
+SET MoneyThousandSep=',';
+SET MoneyDecimalSep='.';
+SET MoneyFormat='$#,##0.00;($#,##0.00)';
+SET TimeFormat='h:mm:ss TT';
+SET DateFormat='M/D/YYYY';
+SET TimestampFormat='M/D/YYYY h:mm:ss[.fff] TT';
+SET MonthNames='Jan;Feb;Mar;Apr;May;Jun;Jul;Aug;Sep;Oct;Nov;Dec';
+SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
+SET LongMonthNames='January;February;March;April;May;June;July;August;September;October;November;December';
+SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
+SET FirstWeekDay=6;
+SET BrokenWeeks=1;
+SET ReferenceDay=0;
+SET FirstMonthOfYear=1;
+SET CollationLocale='en-US';
+
+TempData:
+LOAD CoCd, 
+	 SubField(FileName(), '_', 1) as [Company Name],	
+	 Left(SubField(FileName(), '_', 2),3) as Month,
+	 Num(Mid(SubField(FileName(), '_', 2),4,2)) as Year,
+	 Date(Date#('01'& Left(SubField(FileName(), '_', 2),5),'DDMMMYY'),'DD/MM/YYYY') as DateSort,
+     [G/L acct] as [GL Account], 
+     Crcy,
+     [Accumulated balance]
+FROM
+[D:\Path\Source\*.XLS]
+(txt, unicode, embedded labels, delimiter is '\t', msq, header is 2 lines)
+WHERE [G/L acct] > 0 AND Len(Crcy) > 0;
+
+Concatenate
+LOAD CoCd, 
+	 SubField(FileName(), '_', 1) as [Company Name],	
+	 Left(SubField(FileName(), '_', 2),3) as Month,
+	 Num(Mid(SubField(FileName(), '_', 2),4,2)) as Year, 
+	 Date(Date#('01'& Left(SubField(FileName(), '_', 2),5),'DDMMMYY'),'DD/MM/YYYY') as DateSort,
+     [G/L acct] as [GL Account],
+     Crcy, 
+     [Accumulated balance]
+FROM
+[D:\Path\Source\2013 Format\*.XLS]
+(biff, embedded labels, header is 1 lines, table is Table$)
+WHERE [G/L acct] > 0 AND Len(Crcy) > 0;
+
+NoConcatenate
+GLData:
+LOAD *, IF(Month = 'JAN',[Accumulated balance], [Accumulated balance] - Previous([Accumulated balance])) as [Actual Monthly Balance];
+LOAD * Resident TempData
+ORDER BY [Company Name], CoCd, [GL Account], DateSort;
+
+
+
+DROP TABLE TempData;
+
+
+
